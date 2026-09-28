@@ -12,6 +12,12 @@ class ESP32Random:
 
         self._connect()
 
+    def __del__(self):
+        try:
+            self._close()
+        except Exception:
+            pass
+
     def _connect(self) -> None:
         try:
             self._serial = serial.Serial(
@@ -25,3 +31,8 @@ class ESP32Random:
 
         except serial.SerialException as e:
             raise DeviceConnectionError(f"Nie udało połączyć się z ESP na portcie {self.port}. {e}")
+
+    def _close(self):
+        if self._serial is not None and self._serial.is_open:
+            self._serial.close()
+            self._serial = None
