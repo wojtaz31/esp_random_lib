@@ -1,6 +1,6 @@
 import serial
 import time
-from .exceptions import DeviceConnectionError
+from .exceptions import DeviceConnectionError, DataReadError
 
 
 class ESP32Random:
@@ -14,7 +14,7 @@ class ESP32Random:
 
     def __del__(self):
         try:
-            self._close()
+            self.close()
         except Exception:
             pass
 
@@ -32,7 +32,21 @@ class ESP32Random:
         except serial.SerialException as e:
             raise DeviceConnectionError(f"Nie udało połączyć się z ESP na portcie {self.port}. {e}")
 
-    def _close(self):
+    def close(self):
         if self._serial is not None and self._serial.is_open:
             self._serial.close()
             self._serial = None
+
+    def get_random_bytes(self, count: int) -> bytes:
+        if self._serial is None or not self._serial.is_open:
+            raise DeviceConnectionError("Serial port is closed, unable to get random bytes")
+
+        try:
+            data = self._serial.read(count)
+        except serial.SerialException as e:
+            self.close()
+            raise DeviceConnectionError("Lost connection with device during reading data")
+
+        if len(data) < count:
+            raise DataReadError(f"Timeout error during reading data, wanted {count} bytes, got {len(data)}")
+        return data
